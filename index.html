@@ -402,10 +402,28 @@
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
     <script>
+        // Firebase configuration - REPLACE WITH YOUR CONFIG
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         class ChecklistApp {
             constructor() {
-                this.entries = this.loadEntries();
+                this.entries = [];
                 this.taskInput = document.getElementById('taskInput');
                 this.addBtn = document.getElementById('addBtn');
                 this.entriesList = document.getElementById('entriesList');
@@ -421,57 +439,78 @@
                 });
                 this.clearAllBtn.addEventListener('click', () => this.clearAll());
 
-                this.render();
+                // Listen to Firestore changes in real-time
+                this.loadEntries();
                 this.taskInput.focus();
             }
 
             loadEntries() {
-                const stored = localStorage.getItem('giteshChecklist');
-                return stored ? JSON.parse(stored) : [];
+                db.collection('entries')
+                    .orderBy('timestamp', 'desc')
+                    .onSnapshot((snapshot) => {
+                        this.entries = [];
+                        snapshot.forEach((doc) => {
+                            this.entries.push({
+                                id: doc.id,
+                                ...doc.data()
+                            });
+                        });
+                        this.render();
+                    }, (error) => {
+                        console.error('Error loading entries:', error);
+                    });
             }
 
-            saveEntries() {
-                localStorage.setItem('giteshChecklist', JSON.stringify(this.entries));
-            }
-
-            addEntry() {
+            async addEntry() {
                 const text = this.taskInput.value.trim();
                 if (!text) return;
 
-                const entry = {
-                    id: Date.now(),
-                    text: text,
-                    timestamp: new Date().toISOString(),
-                    completed: false
-                };
+                try {
+                    await db.collection('entries').add({
+                        text: text,
+                        timestamp: new Date().toISOString(),
+                        completed: false
+                    });
 
-                this.entries.unshift(entry);
-                this.saveEntries();
-                this.render();
-                this.taskInput.value = '';
-                this.taskInput.focus();
-            }
-
-            toggleComplete(id) {
-                const entry = this.entries.find(e => e.id === id);
-                if (entry) {
-                    entry.completed = !entry.completed;
-                    this.saveEntries();
-                    this.render();
+                    this.taskInput.value = '';
+                    this.taskInput.focus();
+                } catch (error) {
+                    console.error('Error adding entry:', error);
                 }
             }
 
-            deleteEntry(id) {
-                this.entries = this.entries.filter(e => e.id !== id);
-                this.saveEntries();
-                this.render();
+            async toggleComplete(id) {
+                const entry = this.entries.find(e => e.id === id);
+                if (entry) {
+                    try {
+                        await db.collection('entries').doc(id).update({
+                            completed: !entry.completed
+                        });
+                    } catch (error) {
+                        console.error('Error updating entry:', error);
+                    }
+                }
             }
 
-            clearAll() {
+            async deleteEntry(id) {
+                try {
+                    await db.collection('entries').doc(id).delete();
+                } catch (error) {
+                    console.error('Error deleting entry:', error);
+                }
+            }
+
+            async clearAll() {
                 if (confirm('Clear all entries? This cannot be undone.')) {
-                    this.entries = [];
-                    this.saveEntries();
-                    this.render();
+                    try {
+                        const batch = db.batch();
+                        this.entries.forEach(entry => {
+                            batch.delete(db.collection('entries').doc(entry.id));
+                        });
+                        await batch.commit();
+                    } catch (error) {
+                        console.error('Error clearing entries:', error);
+                    }
                 }
             }
 
@@ -524,10 +563,10 @@
                         </div>
                         <div class="entry-text">${this.linkifyText(entry.text)}</div>
                         <div class="entry-actions">
-                            <button class="action-btn complete-btn" onclick="app.toggleComplete(${entry.id})">
+                            <button class="action-btn complete-btn" onclick="app.toggleComplete('${entry.id}')">
                                 ${entry.completed ? 'Undo' : 'Done'}
                             </button>
-                            <button class="action-btn delete-btn" onclick="app.deleteEntry(${entry.id})">
+                            <button class="action-btn delete-btn" onclick="app.deleteEntry('${entry.id}')">
                                 Delete
                             </button>
                         </div>

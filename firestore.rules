@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access to all entries
+    // Note: This is permissive. In production, you should add authentication
+    match /entries/{entryId} {
+      allow read, write: if true;
+    }
+  }
+}
