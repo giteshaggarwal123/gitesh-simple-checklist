@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gitesh's Checklist</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta name="description" content="A brutally simple, minimal checklist application">
+    <meta name="theme-color" content="#fafafa">
     <style>
         * {
             margin: 0;
@@ -251,6 +254,26 @@
             font-size: 0.75rem;
             color: #a3a3a3;
             margin-top: 4px;
+        }
+
+        .drag-drop-zone {
+            border: 2px dashed #e5e5e5;
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+
+        .drag-drop-zone.drag-over {
+            border-color: #0a0a0a;
+            background: #f5f5f5;
+        }
+
+        .drag-drop-text {
+            font-size: 0.875rem;
+            color: #737373;
         }
 
         .entries-section {
@@ -570,6 +593,20 @@
             .paste-hint {
                 color: #525252;
             }
+
+            .drag-drop-zone {
+                border-color: #262626;
+                background: #0a0a0a;
+            }
+
+            .drag-drop-zone.drag-over {
+                border-color: #fafafa;
+                background: #171717;
+            }
+
+            .drag-drop-text {
+                color: #a3a3a3;
+            }
         }
     </style>
 </head>
@@ -584,6 +621,9 @@
             <label class="input-label">What's Next?</label>
             <div class="input-container">
                 <div class="input-wrapper">
+                    <div class="drag-drop-zone" id="dropZone">
+                        <div class="drag-drop-text">Drop files here or click below</div>
+                    </div>
                     <textarea
                         id="taskInput"
                         placeholder="Task, goal, chore, diary entry... anything!"
@@ -593,7 +633,7 @@
                     <div class="file-controls">
                         <input type="file" id="fileInput" multiple accept="*/*">
                         <button class="file-btn" id="fileBtn">Attach File</button>
-                        <span class="paste-hint">or paste image</span>
+                        <span class="paste-hint">or paste/drag image</span>
                     </div>
                     <div id="attachmentPreview" class="attachment-preview"></div>
                 </div>
@@ -643,6 +683,7 @@
                 this.fileInput = document.getElementById('fileInput');
                 this.fileBtn = document.getElementById('fileBtn');
                 this.attachmentPreview = document.getElementById('attachmentPreview');
+                this.dropZone = document.getElementById('dropZone');
 
                 this.init();
             }
@@ -664,9 +705,44 @@
                 // Paste handler for images
                 this.taskInput.addEventListener('paste', (e) => this.handlePaste(e));
 
+                // Drag and drop handlers
+                this.setupDragAndDrop();
+
                 // Listen to Firestore changes in real-time
                 this.loadEntries();
                 this.taskInput.focus();
+            }
+
+            setupDragAndDrop() {
+                // Prevent default drag behaviors on entire document
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    document.body.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }, false);
+                });
+
+                // Drop zone specific handlers
+                this.dropZone.addEventListener('dragenter', () => {
+                    this.dropZone.classList.add('drag-over');
+                });
+
+                this.dropZone.addEventListener('dragleave', (e) => {
+                    if (e.target === this.dropZone) {
+                        this.dropZone.classList.remove('drag-over');
+                    }
+                });
+
+                this.dropZone.addEventListener('drop', (e) => {
+                    this.dropZone.classList.remove('drag-over');
+                    const files = Array.from(e.dataTransfer.files);
+                    files.forEach(file => this.addAttachment(file));
+                });
+
+                // Make drop zone clickable to trigger file input
+                this.dropZone.addEventListener('click', () => {
+                    this.fileInput.click();
+                });
             }
 
             handlePaste(e) {
