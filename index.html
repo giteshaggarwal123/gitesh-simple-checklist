@@ -803,23 +803,32 @@
             }
 
             async uploadAttachments() {
-                const uploadPromises = this.attachments.map(async ({ file }) => {
-                    const timestamp = Date.now();
-                    const filename = `${timestamp}_${file.name}`;
-                    const storageRef = storage.ref(`attachments/${filename}`);
+                if (this.attachments.length === 0) {
+                    return [];
+                }
 
-                    await storageRef.put(file);
-                    const url = await storageRef.getDownloadURL();
+                try {
+                    const uploadPromises = this.attachments.map(async ({ file }) => {
+                        const timestamp = Date.now();
+                        const filename = `${timestamp}_${file.name}`;
+                        const storageRef = storage.ref(`attachments/${filename}`);
 
-                    return {
-                        name: file.name,
-                        url: url,
-                        type: file.type,
-                        size: file.size
-                    };
-                });
+                        await storageRef.put(file);
+                        const url = await storageRef.getDownloadURL();
 
-                return await Promise.all(uploadPromises);
+                        return {
+                            name: file.name,
+                            url: url,
+                            type: file.type,
+                            size: file.size
+                        };
+                    });
+
+                    return await Promise.all(uploadPromises);
+                } catch (error) {
+                    console.error('Storage upload error:', error);
+                    throw new Error('File upload failed. Please enable Firebase Storage in the console.');
+                }
             }
 
             loadEntries() {
@@ -843,8 +852,13 @@
                 const text = this.taskInput.value.trim();
                 if (!text && this.attachments.length === 0) return;
 
+                // Disable button during save
+                const originalText = this.addBtn.textContent;
+                this.addBtn.textContent = 'Adding...';
+                this.addBtn.disabled = true;
+
                 try {
-                    // Upload attachments first
+                    // Upload attachments first (returns empty array if none)
                     const uploadedAttachments = await this.uploadAttachments();
 
                     // Create entry with attachments
@@ -862,7 +876,11 @@
                     this.taskInput.focus();
                 } catch (error) {
                     console.error('Error adding entry:', error);
-                    alert('Error adding entry. Please try again.');
+                    alert(error.message || 'Error adding entry. Please check console for details.');
+                } finally {
+                    // Re-enable button
+                    this.addBtn.textContent = originalText;
+                    this.addBtn.disabled = false;
                 }
             }
 
