@@ -653,7 +653,6 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 
     <script>
         // Firebase configuration
@@ -681,6 +680,7 @@
             constructor() {
                 this.entries = [];
                 this.attachments = [];
+                this.previewUrls = []; // Track object URLs for cleanup
                 this.taskInput = document.getElementById('taskInput');
                 this.addBtn = document.getElementById('addBtn');
                 this.entriesList = document.getElementById('entriesList');
@@ -689,6 +689,7 @@
                 this.fileBtn = document.getElementById('fileBtn');
                 this.attachmentPreview = document.getElementById('attachmentPreview');
                 this.dropZone = document.getElementById('dropZone');
+                this.MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB limit
 
                 this.init();
             }
@@ -719,6 +720,8 @@
             }
 
             setupDragAndDrop() {
+                let dragCounter = 0;
+
                 // Prevent default drag behaviors on entire document
                 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                     document.body.addEventListener(eventName, (e) => {
@@ -727,18 +730,21 @@
                     }, false);
                 });
 
-                // Drop zone specific handlers
-                this.dropZone.addEventListener('dragenter', () => {
+                // Drop zone specific handlers - fix flickering with counter
+                this.dropZone.addEventListener('dragenter', (e) => {
+                    dragCounter++;
                     this.dropZone.classList.add('drag-over');
                 });
 
                 this.dropZone.addEventListener('dragleave', (e) => {
-                    if (e.target === this.dropZone) {
+                    dragCounter--;
+                    if (dragCounter === 0) {
                         this.dropZone.classList.remove('drag-over');
                     }
                 });
 
                 this.dropZone.addEventListener('drop', (e) => {
+                    dragCounter = 0;
                     this.dropZone.classList.remove('drag-over');
                     const files = Array.from(e.dataTransfer.files);
                     files.forEach(file => this.addAttachment(file));
@@ -768,6 +774,12 @@
             }
 
             addAttachment(file) {
+                // Validate file size
+                if (file.size > this.MAX_FILE_SIZE) {
+                    alert(`File "${file.name}" is too large. Maximum size is 100MB.`);
+                    return;
+                }
+
                 const id = Date.now() + Math.random();
                 this.attachments.push({ id, file });
                 this.renderAttachmentPreviews();
@@ -775,10 +787,20 @@
 
             removeAttachment(id) {
                 this.attachments = this.attachments.filter(a => a.id !== id);
+                this.cleanupPreviewUrls(); // Clean up object URLs
                 this.renderAttachmentPreviews();
             }
 
+            cleanupPreviewUrls() {
+                // Revoke all object URLs to prevent memory leaks
+                this.previewUrls.forEach(url => URL.revokeObjectURL(url));
+                this.previewUrls = [];
+            }
+
             renderAttachmentPreviews() {
+                // Clean up old object URLs
+                this.cleanupPreviewUrls();
+
                 if (this.attachments.length === 0) {
                     this.attachmentPreview.innerHTML = '';
                     return;
@@ -786,25 +808,41 @@
 
                 this.attachmentPreview.innerHTML = this.attachments.map(({ id, file }) => {
                     const isImage = file.type.startsWith('image/');
+                    const safeFileName = this.escapeHtml(file.name);
+
                     if (isImage) {
                         const url = URL.createObjectURL(file);
+                        this.previewUrls.push(url); // Track for cleanup
                         return `
-                            <div class="preview-item">
-                                <img src="${url}" alt="${file.name}">
-                                <button class="preview-remove" onclick="app.removeAttachment(${id})">×</button>
+                            <div class="preview-item" data-id="${id}">
+                                <img src="${url}" alt="${safeFileName}">
+                                <button class="preview-remove" data-id="${id}">×</button>
                             </div>
                         `;
                     } else {
+                        const displayName = safeFileName.length > 15 ? safeFileName.substring(0, 15) + '...' : safeFileName;
                         return `
-                            <div class="preview-item">
-                                <div class="preview-file">
-                                    ${file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name}
-                                </div>
-                                <button class="preview-remove" onclick="app.removeAttachment(${id})">×</button>
+                            <div class="preview-item" data-id="${id}">
+                                <div class="preview-file">${displayName}</div>
+                                <button class="preview-remove" data-id="${id}">×</button>
                             </div>
                         `;
                     }
                 }).join('');
+
+                // Attach event listeners to remove buttons
+                document.querySelectorAll('.preview-remove').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = parseFloat(e.target.dataset.id);
+                        this.removeAttachment(id);
+                    });
+                });
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
             }
 
             async uploadAttachments() {
@@ -912,6 +950,7 @@
                     // Clear input and attachments
                     this.taskInput.value = '';
                     this.attachments = [];
+                    this.cleanupPreviewUrls(); // Clean up object URLs
                     this.renderAttachmentPreviews();
                     this.taskInput.focus();
                     console.log('Step 5: Done!');
@@ -995,7 +1034,8 @@
 
             linkifyText(text) {
                 const urlRegex = /(https?:\/\/[^\s]+)/g;
-                return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+                const escapedText = this.escapeHtml(text);
+                return escapedText.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
             }
 
             render() {
@@ -1009,22 +1049,37 @@
                 }
 
                 this.entriesList.innerHTML = this.entries.map(entry => `
-                    <div class="entry ${entry.completed ? 'completed' : ''}">
+                    <div class="entry ${entry.completed ? 'completed' : ''}" data-entry-id="${entry.id}">
                         <div class="entry-header">
-                            <div class="entry-time">${this.formatTimestamp(entry.timestamp)}</div>
+                            <div class="entry-time">${this.escapeHtml(this.formatTimestamp(entry.timestamp))}</div>
                         </div>
                         ${entry.text ? `<div class="entry-text">${this.linkifyText(entry.text)}</div>` : ''}
                         ${this.renderEntryAttachments(entry.attachments)}
                         <div class="entry-actions">
-                            <button class="action-btn complete-btn" onclick="app.toggleComplete('${entry.id}')">
+                            <button class="action-btn complete-btn" data-entry-id="${entry.id}">
                                 ${entry.completed ? 'Undo' : 'Done'}
                             </button>
-                            <button class="action-btn delete-btn" onclick="app.deleteEntry('${entry.id}')">
+                            <button class="action-btn delete-btn" data-entry-id="${entry.id}">
                                 Delete
                             </button>
                         </div>
                     </div>
                 `).join('');
+
+                // Attach event listeners to action buttons
+                document.querySelectorAll('.complete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = e.target.dataset.entryId;
+                        this.toggleComplete(id);
+                    });
+                });
+
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const id = e.target.dataset.entryId;
+                        this.deleteEntry(id);
+                    });
+                });
             }
 
             renderEntryAttachments(attachments) {
@@ -1032,19 +1087,24 @@
 
                 return `
                     <div class="entry-attachments">
-                        ${attachments.map(att => {
+                        ${attachments.map((att, index) => {
                             const isImage = att.type && att.type.startsWith('image/');
+                            const safeName = this.escapeHtml(att.name || 'file');
+                            const safeUrl = this.escapeHtml(att.url);
+
                             if (isImage) {
                                 return `
                                     <div class="attachment-item">
-                                        <img src="${att.url}" alt="${att.name}" onclick="window.open('${att.url}', '_blank')">
+                                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
+                                            <img src="${safeUrl}" alt="${safeName}">
+                                        </a>
                                     </div>
                                 `;
                             } else {
                                 return `
                                     <div class="attachment-item">
-                                        <a href="${att.url}" target="_blank" class="attachment-file">
-                                            <span>${att.name}</span>
+                                        <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="attachment-file">
+                                            <span>${safeName}</span>
                                         </a>
                                     </div>
                                 `;
