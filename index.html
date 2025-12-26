@@ -807,27 +807,46 @@
                     return [];
                 }
 
+                // Convert files to base64 for now (temporary solution until Storage is enabled)
                 try {
                     const uploadPromises = this.attachments.map(async ({ file }) => {
-                        const timestamp = Date.now();
-                        const filename = `${timestamp}_${file.name}`;
-                        const storageRef = storage.ref(`attachments/${filename}`);
+                        // For images under 1MB, convert to base64
+                        if (file.type.startsWith('image/') && file.size < 1024 * 1024) {
+                            return new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    resolve({
+                                        name: file.name,
+                                        url: reader.result, // base64 data URL
+                                        type: file.type,
+                                        size: file.size
+                                    });
+                                };
+                                reader.onerror = reject;
+                                reader.readAsDataURL(file);
+                            });
+                        } else {
+                            // For larger files or non-images, try Firebase Storage
+                            const timestamp = Date.now();
+                            const filename = `${timestamp}_${file.name}`;
+                            const storageRef = storage.ref(`attachments/${filename}`);
 
-                        await storageRef.put(file);
-                        const url = await storageRef.getDownloadURL();
+                            await storageRef.put(file);
+                            const url = await storageRef.getDownloadURL();
 
-                        return {
-                            name: file.name,
-                            url: url,
-                            type: file.type,
-                            size: file.size
-                        };
+                            return {
+                                name: file.name,
+                                url: url,
+                                type: file.type,
+                                size: file.size
+                            };
+                        }
                     });
 
                     return await Promise.all(uploadPromises);
                 } catch (error) {
-                    console.error('Storage upload error:', error);
-                    throw new Error('File upload failed. Please enable Firebase Storage in the console.');
+                    console.error('Upload error:', error);
+                    throw new Error('File upload failed. For files larger than 1MB, please enable Firebase Storage at: https://console.firebase.google.com/project/gitesh-simple/storage');
                 }
             }
 
