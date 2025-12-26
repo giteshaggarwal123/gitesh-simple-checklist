@@ -6,11 +6,12 @@ A brutally simple, high-end minimal checklist application with Firebase integrat
 
 - Clean, minimal, classy UI
 - Real-time sync across devices with Firebase Firestore
-- **File attachments**: Attach any file type or paste images directly
+- **File attachments**: Attach any file type or paste images directly (via Cloudinary - FREE)
 - Timestamp tracking for all entries
 - Auto-linking for URLs
 - Responsive design for mobile and desktop
 - Dark mode support
+- 25GB free storage with Cloudinary CDN
 
 ## Setup Instructions
 
