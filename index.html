@@ -64,10 +64,18 @@
         .input-container {
             display: flex;
             gap: 8px;
+            align-items: flex-start;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         #taskInput {
-            flex: 1;
+            width: 100%;
             padding: 12px 14px;
             border: 1px solid #e5e5e5;
             border-radius: 6px;
@@ -77,6 +85,8 @@
             font-family: inherit;
             background: #ffffff;
             color: #0a0a0a;
+            resize: vertical;
+            min-height: 42px;
         }
 
         #taskInput:focus {
@@ -107,6 +117,140 @@
 
         #addBtn:active {
             background: #171717;
+        }
+
+        .file-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-btn {
+            padding: 8px 12px;
+            background: transparent;
+            color: #737373;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            font-size: 0.8125rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        .file-btn:hover {
+            background: #fafafa;
+            border-color: #d4d4d4;
+            color: #0a0a0a;
+        }
+
+        .attachment-preview {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .preview-item {
+            position: relative;
+            max-width: 120px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #fafafa;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .preview-file {
+            padding: 12px;
+            font-size: 0.75rem;
+            color: #525252;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .preview-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            background: #0a0a0a;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.8;
+            transition: all 0.15s ease;
+        }
+
+        .preview-remove:hover {
+            opacity: 1;
+            background: #262626;
+        }
+
+        .entry-attachments {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .attachment-item {
+            max-width: 200px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #fafafa;
+        }
+
+        .attachment-item img {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .attachment-item img:hover {
+            opacity: 0.9;
+        }
+
+        .attachment-file {
+            padding: 10px 12px;
+            font-size: 0.8125rem;
+            color: #0a0a0a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .attachment-file:hover {
+            background: #f5f5f5;
+        }
+
+        .paste-hint {
+            font-size: 0.75rem;
+            color: #a3a3a3;
+            margin-top: 4px;
         }
 
         .entries-section {
@@ -258,10 +402,23 @@
 
             .input-container {
                 flex-direction: column;
+                align-items: stretch;
             }
 
             #addBtn {
                 width: 100%;
+            }
+
+            .attachment-preview {
+                justify-content: flex-start;
+            }
+
+            .entry-attachments {
+                flex-direction: column;
+            }
+
+            .attachment-item {
+                max-width: 100%;
             }
         }
 
@@ -370,6 +527,49 @@
             .empty-state {
                 color: #525252;
             }
+
+            .file-btn {
+                background: transparent;
+                border-color: #262626;
+                color: #a3a3a3;
+            }
+
+            .file-btn:hover {
+                background: #0a0a0a;
+                border-color: #404040;
+                color: #fafafa;
+            }
+
+            .preview-item,
+            .attachment-item {
+                background: #0a0a0a;
+                border-color: #262626;
+            }
+
+            .preview-file {
+                color: #d4d4d4;
+            }
+
+            .preview-remove {
+                background: #fafafa;
+                color: #0a0a0a;
+            }
+
+            .preview-remove:hover {
+                background: #e5e5e5;
+            }
+
+            .attachment-file {
+                color: #fafafa;
+            }
+
+            .attachment-file:hover {
+                background: #171717;
+            }
+
+            .paste-hint {
+                color: #525252;
+            }
         }
     </style>
 </head>
@@ -383,12 +583,20 @@
         <div class="input-section">
             <label class="input-label">What's Next?</label>
             <div class="input-container">
-                <input
-                    type="text"
-                    id="taskInput"
-                    placeholder="Task, goal, chore, diary entry... anything!"
-                    autofocus
-                >
+                <div class="input-wrapper">
+                    <textarea
+                        id="taskInput"
+                        placeholder="Task, goal, chore, diary entry... anything!"
+                        rows="1"
+                        autofocus
+                    ></textarea>
+                    <div class="file-controls">
+                        <input type="file" id="fileInput" multiple accept="*/*">
+                        <button class="file-btn" id="fileBtn">Attach File</button>
+                        <span class="paste-hint">or paste image</span>
+                    </div>
+                    <div id="attachmentPreview" class="attachment-preview"></div>
+                </div>
                 <button id="addBtn">Add</button>
             </div>
         </div>
@@ -405,6 +613,7 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 
     <script>
         // Firebase configuration - REPLACE WITH YOUR CONFIG
@@ -420,14 +629,19 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
         class ChecklistApp {
             constructor() {
                 this.entries = [];
+                this.attachments = [];
                 this.taskInput = document.getElementById('taskInput');
                 this.addBtn = document.getElementById('addBtn');
                 this.entriesList = document.getElementById('entriesList');
                 this.clearAllBtn = document.getElementById('clearAll');
+                this.fileInput = document.getElementById('fileInput');
+                this.fileBtn = document.getElementById('fileBtn');
+                this.attachmentPreview = document.getElementById('attachmentPreview');
 
                 this.init();
             }
@@ -435,13 +649,100 @@
             init() {
                 this.addBtn.addEventListener('click', () => this.addEntry());
                 this.taskInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.addEntry();
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.addEntry();
+                    }
                 });
                 this.clearAllBtn.addEventListener('click', () => this.clearAll());
+
+                // File upload handlers
+                this.fileBtn.addEventListener('click', () => this.fileInput.click());
+                this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+
+                // Paste handler for images
+                this.taskInput.addEventListener('paste', (e) => this.handlePaste(e));
 
                 // Listen to Firestore changes in real-time
                 this.loadEntries();
                 this.taskInput.focus();
+            }
+
+            handlePaste(e) {
+                const items = e.clipboardData.items;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        e.preventDefault();
+                        const file = items[i].getAsFile();
+                        this.addAttachment(file);
+                    }
+                }
+            }
+
+            handleFileSelect(e) {
+                const files = Array.from(e.target.files);
+                files.forEach(file => this.addAttachment(file));
+                this.fileInput.value = '';
+            }
+
+            addAttachment(file) {
+                const id = Date.now() + Math.random();
+                this.attachments.push({ id, file });
+                this.renderAttachmentPreviews();
+            }
+
+            removeAttachment(id) {
+                this.attachments = this.attachments.filter(a => a.id !== id);
+                this.renderAttachmentPreviews();
+            }
+
+            renderAttachmentPreviews() {
+                if (this.attachments.length === 0) {
+                    this.attachmentPreview.innerHTML = '';
+                    return;
+                }
+
+                this.attachmentPreview.innerHTML = this.attachments.map(({ id, file }) => {
+                    const isImage = file.type.startsWith('image/');
+                    if (isImage) {
+                        const url = URL.createObjectURL(file);
+                        return `
+                            <div class="preview-item">
+                                <img src="${url}" alt="${file.name}">
+                                <button class="preview-remove" onclick="app.removeAttachment(${id})">×</button>
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div class="preview-item">
+                                <div class="preview-file">
+                                    ${file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name}
+                                </div>
+                                <button class="preview-remove" onclick="app.removeAttachment(${id})">×</button>
+                            </div>
+                        `;
+                    }
+                }).join('');
+            }
+
+            async uploadAttachments() {
+                const uploadPromises = this.attachments.map(async ({ file }) => {
+                    const timestamp = Date.now();
+                    const filename = `${timestamp}_${file.name}`;
+                    const storageRef = storage.ref(`attachments/${filename}`);
+
+                    await storageRef.put(file);
+                    const url = await storageRef.getDownloadURL();
+
+                    return {
+                        name: file.name,
+                        url: url,
+                        type: file.type,
+                        size: file.size
+                    };
+                });
+
+                return await Promise.all(uploadPromises);
             }
 
             loadEntries() {
@@ -463,19 +764,28 @@
 
             async addEntry() {
                 const text = this.taskInput.value.trim();
-                if (!text) return;
+                if (!text && this.attachments.length === 0) return;
 
                 try {
+                    // Upload attachments first
+                    const uploadedAttachments = await this.uploadAttachments();
+
+                    // Create entry with attachments
                     await db.collection('entries').add({
-                        text: text,
+                        text: text || '',
                         timestamp: new Date().toISOString(),
-                        completed: false
+                        completed: false,
+                        attachments: uploadedAttachments
                     });
 
+                    // Clear input and attachments
                     this.taskInput.value = '';
+                    this.attachments = [];
+                    this.renderAttachmentPreviews();
                     this.taskInput.focus();
                 } catch (error) {
                     console.error('Error adding entry:', error);
+                    alert('Error adding entry. Please try again.');
                 }
             }
 
@@ -561,7 +871,8 @@
                         <div class="entry-header">
                             <div class="entry-time">${this.formatTimestamp(entry.timestamp)}</div>
                         </div>
-                        <div class="entry-text">${this.linkifyText(entry.text)}</div>
+                        ${entry.text ? `<div class="entry-text">${this.linkifyText(entry.text)}</div>` : ''}
+                        ${this.renderEntryAttachments(entry.attachments)}
                         <div class="entry-actions">
                             <button class="action-btn complete-btn" onclick="app.toggleComplete('${entry.id}')">
                                 ${entry.completed ? 'Undo' : 'Done'}
@@ -572,6 +883,33 @@
                         </div>
                     </div>
                 `).join('');
+            }
+
+            renderEntryAttachments(attachments) {
+                if (!attachments || attachments.length === 0) return '';
+
+                return `
+                    <div class="entry-attachments">
+                        ${attachments.map(att => {
+                            const isImage = att.type && att.type.startsWith('image/');
+                            if (isImage) {
+                                return `
+                                    <div class="attachment-item">
+                                        <img src="${att.url}" alt="${att.name}" onclick="window.open('${att.url}', '_blank')">
+                                    </div>
+                                `;
+                            } else {
+                                return `
+                                    <div class="attachment-item">
+                                        <a href="${att.url}" target="_blank" class="attachment-file">
+                                            <span>${att.name}</span>
+                                        </a>
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
+                    </div>
+                `;
             }
         }
 
